@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Target Tracker</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #09090b;
+            --card-bg: #18181b;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --border-color: #27272a;
+            --input-bg: #27272a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            padding: 20px;
+            line-height: 1.6;
+            background-image: radial-gradient(circle at top center, #1f1f22 0%, var(--bg-color) 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #appTitleInput {
+            background: transparent;
+            border: 1px solid transparent;
+            font-size: 2rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 5px;
+            cursor: text;
+            letter-spacing: -1px;
+        }
+        #appTitleInput:hover { border-color: var(--border-color); }
+        #appTitleInput:focus { border-color: var(--accent-blue); background: var(--card-bg); }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media(min-width: 768px) {
+            .dashboard-grid { grid-template-columns: 1fr 2fr; }
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        /* Inputs & Forms */
+        .form-group { margin-bottom: 15px; }
+        
+        label { display: block; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-secondary); }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus { outline: none; border-color: var(--accent-blue); }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; }
+        button.delete-btn { background: var(--accent-red); width: auto; padding: 5px 10px; font-size: 0.8rem; }
+
+        /* Stats Display */
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .stat-box { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        .text-green { color: var(--accent-green); }
+        .text-red { color: var(--accent-red); }
+
+        /* Table */
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+
+        th { color: var(--text-secondary); font-weight: 600; }
+        
+        /* Progress Bar */
+        .progress-container {
+            background-color: var(--input-bg);
+            border-radius: 10px;
+            height: 10px;
+            width: 100%;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-green), #4ade80);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <input type="text" id="appTitleInput" value="Forex Monthly Target">
+        <p style="color: var(--text-secondary)">Track your daily P&L and hit your goals</p>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Left Column: Controls -->
+        <div class="left-col">
+            <!-- Target Section -->
+            <div class="card">
+                <h2>🎯 Set Monthly Target</h2>
+                <div class="form-group">
+                    <label>Target Amount ($)</label>
+                    <input type="number" id="targetInput" placeholder="e.g. 1000">
+                </div>
+                <button onclick="updateTarget()">Set Target</button>
+                
+                <div style="margin-top: 20px;">
+                    <label>Progress</label>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <p id="progressText" style="text-align: right; font-size: 0.8rem; margin-top: 5px;">0%</p>
+                </div>
+            </div>
+
+            <!-- Add Trade Section -->
+            <div class="card" style="margin-top: 20px;">
+                <h2>📝 Log Daily Trade</h2>
+                <form id="tradeForm">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="tradeDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Pair</label>
+                        <input type="text" id="tradePair" placeholder="e.g. EURUSD" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Direction</label>
+                        <select id="tradeDirection">
+                            <option value="Long">Long (Buy)</option>
+                            <option value="Short">Short (Sell)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Strategy</label>
+                        <input type="text" id="tradeStrategy" placeholder="e.g. Breakout">
+                    </div>
+                    <div class="form-group">
+                        <label>Profit / Loss ($)</label>
+                        <input type="number" id="tradeAmount" placeholder="e.g. 50 or -20" step="0.01" required>
+                        <small style="color: var(--text-secondary); font-size: 0.7rem;">Use negative numbers for losses (e.g. -20)</small>
+                    </div>
+                    <button type="submit">Add Record</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Column: Chart & Stats -->
+        <div class="right-col">
+            <div class="card">
+                <h2>📊 Performance Chart</h2>
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="stat-label">Total P&L</div>
+                        <div class="stat-value" id="totalPnL">.00</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Remaining</div>
+                        <div class="stat-value" id="remainingTarget">.00</div>
+                    </div>
+                </div>
+                <div style="position: relative; height: 300px;">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- History Table -->
+            <div class="card" style="margin-top: 20px;">
+                <h2>📜 Trade History</h2>
+                <div class="table-container">
+                    <table id="tradeTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Pair</th>
+                                <th>Type</th>
+                                <th>Strategy</th>
+                                <th>P&L</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="margin-top: 30px; text-align: center;">
+        <button onclick="downloadCSV()" style="width: auto; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary);">Download CSV History</button>
+    </div>
+</div>
+
+<script>
+    // --- State Management ---
+    let trades = JSON.parse(localStorage.getItem('forex_trades')) || [];
+    let monthlyTarget = parseFloat(localStorage.getItem('forex_target')) || 1000;
+    let appTitle = localStorage.getItem('forex_app_title') || "Forex Monthly Target";
+    let chartInstance = null;
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('targetInput').value = monthlyTarget;
+        document.getElementById('appTitleInput').value = appTitle;
+        // Set default date to today
+        document.getElementById('tradeDate').valueAsDate = new Date();
+        renderApp();
+    });
+
+    // --- Core Functions ---
+
+    document.getElementById('appTitleInput').addEventListener('input', (e) => {
+        localStorage.setItem('forex_app_title', e.target.value);
+    });
+
+    function updateTarget() {
+        const input = document.getElementById('targetInput').value;
+        if(input) {
+            monthlyTarget = parseFloat(input);
+            localStorage.setItem('forex_target', monthlyTarget);
+            renderApp();
+            alert('Target updated!');
+        }
+    }
+
+    document.getElementById('tradeForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const date = document.getElementById('tradeDate').value;
+        const amount = parseFloat(document.getElementById('tradeAmount').value);
+        const pair = document.getElementById('tradePair').value;
+        const direction = document.getElementById('tradeDirection').value;
+        const strategy = document.getElementById('tradeStrategy').value;
+
+        if (date && !isNaN(amount)) {
+            trades.push({ id: Date.now(), date, pair, direction, strategy, amount });
+            // Sort trades by date
+            trades.sort((a, b) => new Date(a.date) - new Date(b.date));
+            saveTrades();
+            renderApp();
+            document.getElementById('tradeAmount').value = ''; // Clear amount input
+            document.getElementById('tradePair').value = '';
+            document.getElementById('tradeStrategy').value = '';
+        }
+    });
+
+    function deleteTrade(id) {
+        if(confirm('Delete this record?')) {
+            trades = trades.filter(t => t.id !== id);
+            saveTrades();
+            renderApp();
+        }
+    }
+
+    function saveTrades() {
+        localStorage.setItem('forex_trades', JSON.stringify(trades));
+    }
+
+    // --- Rendering Logic ---
+
+    function renderApp() {
+        renderTable();
+        renderStats();
+        renderChart();
+    }
+
+    function renderTable() {
+        const tbody = document.querySelector('#tradeTable tbody');
+        tbody.innerHTML = '';
+
+        trades.slice().reverse().forEach(trade => {
+            const tr = document.createElement('tr');
+            const pnlClass = trade.amount >= 0 ? 'text-green' : 'text-red';
+            const sign = trade.amount >= 0 ? '+' : '';
+            const typeColor = trade.direction === 'Long' ? 'var(--accent-green)' : 'var(--accent-red)';
+            
+            tr.innerHTML = `
+                <td>${trade.date}</td>
+                <td>${trade.pair || '-'}</td>
+                <td style="color: ${typeColor}">${trade.direction || '-'}</td>
+                <td style="color: var(--text-secondary)">${trade.strategy || '-'}</td>
+                <td class="${pnlClass}">${sign}$${trade.amount.toFixed(2)}</td>
+                <td><button class="delete-btn" onclick="deleteTrade(${trade.id})">X</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderStats() {
+        const total = trades.reduce((sum, t) => sum + t.amount, 0);
+        const remaining = monthlyTarget - total;
+        
+        // Update Text
+        const totalEl = document.getElementById('totalPnL');
+        totalEl.textContent = `$${total.toFixed(2)}`;
+        totalEl.className = `stat-value ${total >= 0 ? 'text-green' : 'text-red'}`;
+
+        document.getElementById('remainingTarget').textContent = `$${remaining.toFixed(2)}`;
+
+        // Update Progress Bar
+        let percentage = (total / monthlyTarget) * 100;
+        if (percentage < 0) percentage = 0;
+        if (percentage > 100) percentage = 100;
+        
+        document.getElementById('progressBar').style.width = `${percentage}%`;
+        document.getElementById('progressText').textContent = `${percentage.toFixed(1)}% of Target`;
+    }
+
+    function renderChart() {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        // Calculate Cumulative P&L for the line chart
+        let cumulative = 0;
+        const dataPoints = trades.map(t => {
+            cumulative += t.amount;
+            return cumulative;
+        });
+        const labels = trades.map(t => t.date);
+
+        // Create a target line array (same value for every date)
+        const targetLine = new Array(trades.length).fill(monthlyTarget);
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Cumulative P&L',
+                        data: dataPoints,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Target',
+                        data: targetLine,
+                        borderColor: '#10b981',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#94a3b8' } }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    }
+
+    function downloadCSV() {
+        if (trades.length === 0) {
+            alert("No trades to export.");
+            return;
+        }
+        const headers = ["Date", "Pair", "Direction", "Strategy", "P&L"];
+        const csvContent = [
+            headers.join(","),
+            ...trades.map(t => `${t.date},${t.pair || ''},${t.direction || ''},${t.strategy || ''},${t.amount}`)
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'forex_trades.csv';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
